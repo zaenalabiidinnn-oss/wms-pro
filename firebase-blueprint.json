@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Details of a product item in a specific warehouse",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sku": { "type": "string" },
+        "nama_produk": { "type": "string" },
+        "gudangId": { "type": "string" }
+      },
+      "required": ["id", "sku", "nama_produk", "gudangId"]
+    },
+    "Gudang": {
+      "title": "Warehouse",
+      "description": "Information about a specific warehouse",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nama": { "type": "string" },
+        "lokasi": { "type": "string" }
+      },
+      "required": ["id", "nama"]
+    },
+    "BarangMasuk": {
+      "title": "Incoming Goods",
+      "description": "Records of goods received in the warehouse",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string", "format": "date-time" },
+        "dokumen": { "type": "string", "description": "Reference document number" },
+        "sku": { "type": "string" },
+        "jumlah": { "type": "number", "description": "Quantity received" },
+        "gudangId": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "dokumen", "sku", "jumlah", "gudangId"]
+    },
+    "BarangKeluar": {
+      "title": "Outgoing Goods",
+      "description": "Records of goods leaving the warehouse (Sales or Special)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string", "format": "date-time" },
+        "resi": { "type": "string", "description": "Shipping receipt number" },
+        "sku": { "type": "string" },
+        "jumlah": { "type": "number" },
+        "tipe": { "type": "string", "enum": ["penjualan", "khusus"] },
+        "keterangan": { "type": "string" },
+        "gudangId": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "sku", "jumlah", "tipe", "gudangId"]
+    },
+    "Stok": {
+      "title": "Stock Balance",
+      "description": "Current stock level for a SKU in a specific warehouse",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sku": { "type": "string" },
+        "gudangId": { "type": "string" },
+        "jumlah": { "type": "number" }
+      },
+      "required": ["id", "sku", "gudangId", "jumlah"]
+    },
+    "LogTransaksi": {
+      "title": "Transaction Log",
+      "description": "Detailed log of all warehouse movements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string", "format": "date-time" },
+        "sku": { "type": "string" },
+        "gudangId": { "type": "string" },
+        "masuk": { "type": "number" },
+        "keluar": { "type": "number" },
+        "stok_setelah": { "type": "number" },
+        "tipe": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "sku", "gudangId", "masuk", "keluar", "stok_setelah", "tipe"]
+    }
+  },
+  "firestore": {
+    "/products/{sku}": {
+      "schema": "Product",
+      "description": "Collection of available products"
+    },
+    "/gudang/{id}": {
+      "schema": "Gudang",
+      "description": "Collection of warehouses"
+    },
+    "/barang_masuk/{id}": {
+      "schema": "BarangMasuk",
+      "description": "Daily records of incoming items"
+    },
+    "/barang_keluar/{id}": {
+      "schema": "BarangKeluar",
+      "description": "Daily records of outgoing items"
+    },
+    "/stok/{id}": {
+      "schema": "Stok",
+      "description": "Real-time stock balance tracking per warehouse"
+    },
+    "/logs/{id}": {
+      "schema": "LogTransaksi",
+      "description": "Audit trail for all inventory movements"
+    }
+  }
+}

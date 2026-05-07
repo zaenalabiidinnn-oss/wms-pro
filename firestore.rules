@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt'])
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && 'nama' in data))
+        && data.uid is string
+        && data.email is string
+        && data.role in ['admin', 'user']
+        && data.createdAt is string;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'sku', 'nama_produk', 'gudangId']) 
+        && data.keys().size() == 4
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 100
+        && data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 50
+        && data.nama_produk is string && data.nama_produk.size() >= 1 && data.nama_produk.size() <= 200
+        && data.gudangId is string && data.gudangId.size() >= 1;
+    }
+
+    function isValidGudang(data) {
+      return data.keys().hasAll(['id', 'nama'])
+        && (data.keys().size() == 2 || (data.keys().size() == 3 && 'lokasi' in data))
+        && data.id is string
+        && data.nama is string && data.nama.size() >= 1;
+    }
+
+    function isValidBarangMasuk(data) {
+      return data.keys().hasAll(['id', 'tanggal', 'dokumen', 'sku', 'jumlah', 'gudangId'])
+        && data.keys().size() == 6
+        && data.id is string
+        && data.tanggal is string
+        && data.dokumen is string && data.dokumen.size() <= 100
+        && data.sku is string
+        && data.gudangId is string
+        && data.jumlah is number && data.jumlah >= 0;
+    }
+
+    function isValidBarangKeluar(data) {
+      return data.keys().hasAll(['id', 'tanggal', 'sku', 'jumlah', 'tipe', 'gudangId'])
+        && data.id is string
+        && data.tanggal is string
+        && data.sku is string
+        && data.gudangId is string
+        && data.jumlah is number && data.jumlah >= 0
+        && data.tipe in ['penjualan', 'khusus'];
+    }
+
+    function isValidStok(data) {
+      return data.keys().hasAll(['id', 'sku', 'gudangId', 'jumlah'])
+        && data.keys().size() == 4
+        && data.id is string
+        && data.sku is string
+        && data.gudangId is string
+        && data.jumlah is number;
+    }
+
+    function isValidLog(data) {
+      return data.keys().hasAll(['id', 'tanggal', 'sku', 'gudangId', 'masuk', 'keluar', 'stok_setelah', 'tipe'])
+        && data.keys().size() == 8
+        && data.id is string
+        && data.tanggal is string
+        && data.sku is string
+        && data.gudangId is string
+        && data.masuk is number
+        && data.keluar is number
+        && data.stok_setelah is number
+        && data.tipe is string;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (uid == request.auth.uid || isAdmin()) && isValidUser(incoming());
+      allow update: if isSignedIn() && (
+        (uid == request.auth.uid && incoming().role == existing().role) || isAdmin()
+      ) && isValidUser(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /products/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidProduct(incoming()) && id == incoming().id;
+    }
+
+    match /gudang/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidGudang(incoming()) && id == incoming().id;
+    }
+
+    match /barang_masuk/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidBarangMasuk(incoming()) && id == incoming().id;
+      allow update, delete: if isAdmin();
+    }
+
+    match /barang_keluar/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidBarangKeluar(incoming()) && id == incoming().id;
+      allow update, delete: if isAdmin();
+    }
+
+    match /stok/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidStok(incoming()) && id == incoming().id;
+    }
+
+    match /logs/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidLog(incoming()) && id == incoming().id;
+      allow delete: if isAdmin();
+    }
+  }
+}
